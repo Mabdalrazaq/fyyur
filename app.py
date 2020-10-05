@@ -46,7 +46,7 @@ class Venue(db.Model):
     phone = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
-    genres=db.Column(ARRAY(db.String),default=["Rock","Metal"],nullable=False)
+    genres=db.Column(ARRAY(db.String),nullable=False)
     website=db.Column(db.String)
     seeking_talent=db.Column(db.Boolean)
     seeking_description=db.Column(db.String)
@@ -65,7 +65,7 @@ class Artist(db.Model):
     genres = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
-    genres=db.Column(ARRAY(db.String),default=["Rock","Metal"],nullable=False)
+    genres=db.Column(ARRAY(db.String),nullable=False)
     website=db.Column(db.String)
     seeking_venue=db.Column(db.Boolean)
     seeking_description=db.Column(db.String)
@@ -212,7 +212,7 @@ def create_venue_submission():
   # TODO: modify data to be the data object returned from db insertion
   try: 
     form=request.form
-    venue=Venue(name=form["name"],address=form["address"],phone=form["phone"],city=form["city"],state=form["state"])
+    venue=Venue(name=form["name"],address=form["address"],phone=form["phone"],city=form["city"],state=form["state"],genres=form.getlist("genres"),facebook_link=form["facebook_link"])
     db.session.add(venue)
     db.session.commit()
     flash('Venue ' + venue.name + ' was successfully listed!')
@@ -221,6 +221,7 @@ def create_venue_submission():
   except:
     db.session.rollback()
     db.session.close()
+    print(sys.exc_info())
     flash('An error occurred. Venue ' + form["name"] + ' could not be listed.')
     abort(400)
 
@@ -432,7 +433,7 @@ def create_artist_submission():
   # TODO: modify data to be the data object returned from db insertion
   try: 
     form=request.form
-    artist=Artist(name=form["name"],phone=form["phone"],city=form["city"],state=form["state"])
+    artist=Artist(name=form["name"],phone=form["phone"],city=form["city"],state=form["state"],genres=form.getlist("genres"),facebook_link=form["facebook_link"])
     db.session.add(artist)
     db.session.commit()
     flash('Artist ' + artist.name + ' was successfully listed!')
