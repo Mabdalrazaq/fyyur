@@ -5,7 +5,16 @@
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for,jsonify,abort
+from flask import (
+Flask,
+render_template,
+request,
+Response,
+flash,
+redirect,
+url_for,
+jsonify,
+abort)
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
@@ -13,12 +22,11 @@ from logging import Formatter, FileHandler
 from flask_wtf import Form
 from forms import *
 from flask_migrate import Migrate
-from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy import func
 from datetime import datetime
 import json
 import sys
-
+from models import Venue,Artist,Show, setup_db
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -26,7 +34,7 @@ import sys
 app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object('config')
-db = SQLAlchemy(app)
+db=setup_db(app)
 migrate=Migrate(app,db)
 
 # TODO: connect to a local postgresql database
@@ -35,49 +43,6 @@ migrate=Migrate(app,db)
 # Models.
 #----------------------------------------------------------------------------#
 
-class Venue(db.Model):
-    __tablename__ = 'Venue'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    address = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    genres=db.Column(ARRAY(db.String),nullable=False)
-    website=db.Column(db.String)
-    seeking_talent=db.Column(db.Boolean)
-    seeking_description=db.Column(db.String)
-    shows=db.relationship('Show',backref='venue')
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
-
-class Artist(db.Model):
-    __tablename__ = 'Artist'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    genres = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    genres=db.Column(ARRAY(db.String),nullable=False)
-    website=db.Column(db.String)
-    seeking_venue=db.Column(db.Boolean)
-    seeking_description=db.Column(db.String)
-    shows=db.relationship('Show',backref='artist')
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
-
-class Show(db.Model):
-  __tablename__='Show'
-  id=db.Column(db.Integer,primary_key=True)
-  artist_id=db.Column(db.Integer, db.ForeignKey('Artist.id'),nullable=False)
-  venue_id=db.Column(db.Integer,db.ForeignKey('Venue.id'),nullable=False)
-  start_time=db.Column(db.String,nullable=False)
 
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
@@ -212,7 +177,21 @@ def create_venue_submission():
   # TODO: modify data to be the data object returned from db insertion
   try: 
     form=request.form
-    venue=Venue(name=form["name"],address=form["address"],phone=form["phone"],city=form["city"],state=form["state"],genres=form.getlist("genres"),facebook_link=form["facebook_link"])
+    seeking_talent=form.get("seeking_talent",False)
+    if(seeking_talent=="y"):
+      seeking_talent=True
+    venue=Venue(name=form["name"],
+    address=form["address"],
+    phone=form["phone"],
+    city=form["city"],
+    state=form["state"],
+    genres=form.getlist("genres"),
+    facebook_link=form["facebook_link"],
+    website=form["website"],
+    image_link=form["image_link"],
+    seeking_description=form["seeking_description"],
+    seeking_talent=seeking_talent)
+
     db.session.add(venue)
     db.session.commit()
     flash('Venue ' + venue.name + ' was successfully listed!')
@@ -433,13 +412,27 @@ def create_artist_submission():
   # TODO: modify data to be the data object returned from db insertion
   try: 
     form=request.form
-    artist=Artist(name=form["name"],phone=form["phone"],city=form["city"],state=form["state"],genres=form.getlist("genres"),facebook_link=form["facebook_link"])
+    seeking_venue=False
+    if form.get("seeking_venue","")=="y":
+      seeking_venue=True
+    print(json.dumps(form,indent=4))
+    artist=Artist(name=form["name"],
+    phone=form["phone"],
+    city=form["city"],
+    state=form["state"],
+    genres=form.getlist("genres"),
+    facebook_link=form["facebook_link"],
+    seeking_venue=seeking_venue,
+    seeking_description=form["seeking_description"],
+    website=form["website"],
+    image_link=form["image_link"])
     db.session.add(artist)
     db.session.commit()
     flash('Artist ' + artist.name + ' was successfully listed!')
     db.session.close()
     return render_template('pages/home.html')
   except:
+    print(sys.exc_info())
     db.session.rollback()
     db.session.close()
     flash('An error occurred. Venue ' + form["name"] + ' could not be listed.')
